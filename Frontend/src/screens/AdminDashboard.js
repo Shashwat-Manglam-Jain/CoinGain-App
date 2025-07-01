@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useContext, useEffect, useCallback } from 'react';
 import {
   View,
@@ -21,7 +20,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ThemeToggle from '../components/ThemeToggle';
 import { ThemeContext } from '../ThemeContext';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import * as DocumentPicker from 'expo-document-picker';
 import axios from 'axios';
 import { API_BASE_URL } from '../../utils/api';
@@ -29,7 +27,7 @@ import { API_BASE_URL } from '../../utils/api';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const CARD_HEIGHT = 250; // Fixed card height for mobile
-const CARD_WIDTH = SCREEN_WIDTH - 40; // Fixed card width (320px for 360px screen)
+const CARD_WIDTH = SCREEN_WIDTH - 100; // Fixed card width (320px for 360px screen)
 
 // Default admin user data
 const defaultAdminUser = {
@@ -84,22 +82,6 @@ export default function AdminDashboard({ navigation }) {
   const [modalAction, setModalAction] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // Animated values
-  const tabAnimation = useSharedValue(0);
-  const buttonAnimation = useSharedValue(1);
-  const cardAnimation = useSharedValue(0);
-
-  // Animated styles
-  const animatedTabStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + tabAnimation.value * 0.05 }],
-  }));
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonAnimation.value }],
-  }));
-  const animatedCardStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(cardAnimation.value * -10) }],
-    opacity: withSpring(1),
-  }));
   const scrollRef = useRef(null);
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -108,7 +90,7 @@ export default function AdminDashboard({ navigation }) {
     const interval = setInterval(() => {
       if (!isPaused && rewards.length > 0) {
         const nextIndex = (index + 1) % rewards.length;
-        scrollRef.current?.scrollTo({ x: nextIndex * CARD_WIDTH, animated: true });
+        scrollRef.current?.scrollTo({ x: nextIndex * CARD_WIDTH, animated: !isWeb });
         setIndex(nextIndex);
       }
     }, 1000);
@@ -206,31 +188,14 @@ export default function AdminDashboard({ navigation }) {
     }
   }, []);
 
-  // Trigger card animation on mount
-  useEffect(() => {
-    cardAnimation.value = 1;
-  }, [currentTab]);
-
   // Handle tab change
   const handleTabChange = (tab) => {
     setCurrentTab(tab);
-    tabAnimation.value = withSpring(1, { damping: 15, stiffness: 120 });
-    setTimeout(() => (tabAnimation.value = 0), 200);
-    cardAnimation.value = 0;
-    setTimeout(() => (cardAnimation.value = 1), 100);
   };
 
-  // Handle button press animation with AsyncStorage clearing for logout
-  const handleButtonPress = async (callback) => {
-    try {
-      buttonAnimation.value = withSpring(0.92, { damping: 25, stiffness: 150 });
-      setTimeout(() => {
-        buttonAnimation.value = withSpring(1, { damping: 25, stiffness: 150 });
-        callback();
-      }, 80);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to process action: ' + error.message);
-    }
+  // Handle button press
+  const handleButtonPress = (callback) => {
+    callback();
   };
 
   // Image upload handler
@@ -512,7 +477,7 @@ export default function AdminDashboard({ navigation }) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <Animated.View style={[styles.modal, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+          <View style={[styles.modal, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Confirm Action
             </Text>
@@ -520,7 +485,7 @@ export default function AdminDashboard({ navigation }) {
               {modalMessage}
             </Text>
             <View style={styles.buttonRow}>
-              <Animated.View style={animatedButtonStyle}>
+              <View style={styles.buttonContainer}>
                 <Button
                   mode="contained"
                   style={styles.actionButton}
@@ -530,8 +495,8 @@ export default function AdminDashboard({ navigation }) {
                 >
                   <ButtonText>Confirm</ButtonText>
                 </Button>
-              </Animated.View>
-              <Animated.View style={animatedButtonStyle}>
+              </View>
+              <View style={styles.buttonContainer}>
                 <Button
                   mode="outlined"
                   style={styles.actionButton}
@@ -540,9 +505,9 @@ export default function AdminDashboard({ navigation }) {
                 >
                   <ButtonText>Cancel</ButtonText>
                 </Button>
-              </Animated.View>
+              </View>
             </View>
-          </Animated.View>
+          </View>
         </View>
       </Modal>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -554,7 +519,7 @@ export default function AdminDashboard({ navigation }) {
               </Text>
               <View style={styles.headerButtons}>
                 <ThemeToggle style={styles.toggle} />
-                <Animated.View style={animatedButtonStyle}>
+                <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
                     style={styles.button}
@@ -569,14 +534,14 @@ export default function AdminDashboard({ navigation }) {
                   >
                     <ButtonText>Logout</ButtonText>
                   </Button>
-                </Animated.View>
+                </View>
               </View>
             </View>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="Admin Overview"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
-                left={() => <Avatar.Icon size='40' icon="account-circle" style={{ backgroundColor: colors.primary }} />}
+                left={() => <Avatar.Icon size={40} icon="account-circle" style={{ backgroundColor: colors.primary }} />}
               />
               <Card.Content>
                 <Text style={[styles.cardText, { color: colors.primary, fontWeight: 'bold' }]}>
@@ -598,8 +563,8 @@ export default function AdminDashboard({ navigation }) {
                   Total Coins Sent: {users.reduce((sum, u) => sum + (u.points || 0), 0)}
                 </Text>
               </Card.Content>
-            </Animated.View>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            </View>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Content>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>
                   Send Coins 💰
@@ -621,7 +586,7 @@ export default function AdminDashboard({ navigation }) {
                   mode="outlined"
                   keyboardType="numeric"
                 />
-                <Animated.View style={animatedButtonStyle}>
+                <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
                     style={styles.button}
@@ -633,10 +598,10 @@ export default function AdminDashboard({ navigation }) {
                     <Text style={{ color: '#fff', marginRight: 8, fontSize: 16 }}>Send Coins</Text>
                     <MaterialCommunityIcons name="send" size={20} color="#fff" />
                   </Button>
-                </Animated.View>
+                </View>
               </Card.Content>
-            </Animated.View>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            </View>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="Rewards"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
@@ -681,7 +646,7 @@ export default function AdminDashboard({ navigation }) {
                   </ScrollView>
                 </TouchableWithoutFeedback>
               </Card.Content>
-            </Animated.View>
+            </View>
           </>
         )}
         {currentTab === 'users' && (
@@ -705,7 +670,7 @@ export default function AdminDashboard({ navigation }) {
               )}
               keyExtractor={(item) => item._id}
               renderItem={({ item }) => (
-                <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+                <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
                   <Card.Content>
                     {editUser && editUser._id === item._id ? (
                       <View style={styles.editContainer}>
@@ -735,7 +700,7 @@ export default function AdminDashboard({ navigation }) {
                           mode="outlined"
                         />
                         <View style={styles.buttonRow}>
-                          <Animated.View style={animatedButtonStyle}>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="contained"
                               style={styles.actionButton}
@@ -745,8 +710,8 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Save</ButtonText>
                             </Button>
-                          </Animated.View>
-                          <Animated.View style={animatedButtonStyle}>
+                          </View>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="outlined"
                               style={styles.actionButton}
@@ -755,7 +720,7 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Cancel</ButtonText>
                             </Button>
-                          </Animated.View>
+                          </View>
                         </View>
                       </View>
                     ) : sendTokenUserId === item._id ? (
@@ -770,7 +735,7 @@ export default function AdminDashboard({ navigation }) {
                           keyboardType="numeric"
                         />
                         <View style={styles.buttonRow}>
-                          <Animated.View style={animatedButtonStyle}>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="contained"
                               style={styles.actionButton}
@@ -780,8 +745,8 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Send</ButtonText>
                             </Button>
-                          </Animated.View>
-                          <Animated.View style={animatedButtonStyle}>
+                          </View>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="outlined"
                               style={styles.actionButton}
@@ -790,7 +755,7 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Cancel</ButtonText>
                             </Button>
-                          </Animated.View>
+                          </View>
                         </View>
                       </View>
                     ) : (
@@ -811,7 +776,7 @@ export default function AdminDashboard({ navigation }) {
                           Unique Code: {item.uniqueCode || 'N/A'}
                         </Text>
                         <View style={styles.buttonRow}>
-                          <Animated.View style={animatedButtonStyle}>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="outlined"
                               style={styles.actionButton}
@@ -820,8 +785,8 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Edit</ButtonText>
                             </Button>
-                          </Animated.View>
-                          <Animated.View style={animatedButtonStyle}>
+                          </View>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="outlined"
                               style={styles.actionButton}
@@ -830,8 +795,8 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Delete</ButtonText>
                             </Button>
-                          </Animated.View>
-                          <Animated.View style={animatedButtonStyle}>
+                          </View>
+                          <View style={styles.buttonContainer}>
                             <Button
                               mode="contained"
                               style={styles.actionButton}
@@ -841,12 +806,12 @@ export default function AdminDashboard({ navigation }) {
                             >
                               <ButtonText>Send Tokens</ButtonText>
                             </Button>
-                          </Animated.View>
+                          </View>
                         </View>
                       </View>
                     )}
                   </Card.Content>
-                </Animated.View>
+                </View>
               )}
               ListEmptyComponent={() => (
                 <Text style={[styles.emptyText, { color: colors.text }]}>No users found.</Text>
@@ -861,7 +826,7 @@ export default function AdminDashboard({ navigation }) {
         {currentTab === 'rewards' && (
           <View style={styles.tabContent}>
             <Text style={[styles.title, { color: colors.text }]}>Rewards</Text>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="Manage Rewards"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
@@ -894,7 +859,7 @@ export default function AdminDashboard({ navigation }) {
                   theme={{ colors: { text: colors.text, primary: colors.primary } }}
                   mode="outlined"
                 />
-                <Animated.View style={animatedButtonStyle}>
+                <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
                     style={styles.actionButton}
@@ -904,7 +869,7 @@ export default function AdminDashboard({ navigation }) {
                   >
                     <ButtonText>Upload Image</ButtonText>
                   </Button>
-                </Animated.View>
+                </View>
                 {imagePreview && (
                   <Image
                     source={{ uri: imagePreview }}
@@ -912,7 +877,7 @@ export default function AdminDashboard({ navigation }) {
                     onError={() => Alert.alert('Error', 'Failed to load image preview')}
                   />
                 )}
-                <Animated.View style={animatedButtonStyle}>
+                <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
                     style={styles.submitButton}
@@ -924,7 +889,7 @@ export default function AdminDashboard({ navigation }) {
                   >
                     <ButtonText>{isUploading ? 'Adding...' : 'Add Reward'}</ButtonText>
                   </Button>
-                </Animated.View>
+                </View>
                 <FlatList
                   data={rewards}
                   keyExtractor={(item) => item._id}
@@ -947,7 +912,7 @@ export default function AdminDashboard({ navigation }) {
                         </View>
                       </ImageBackground>
                       <View style={styles.buttonRow}>
-                        <Animated.View style={animatedButtonStyle}>
+                        <View style={styles.buttonContainer}>
                           <Button
                             mode="outlined"
                             style={styles.actionButton}
@@ -959,8 +924,8 @@ export default function AdminDashboard({ navigation }) {
                           >
                             <ButtonText>Edit</ButtonText>
                           </Button>
-                        </Animated.View>
-                        <Animated.View style={animatedButtonStyle}>
+                        </View>
+                        <View style={styles.buttonContainer}>
                           <Button
                             mode="outlined"
                             style={styles.actionButton}
@@ -971,7 +936,7 @@ export default function AdminDashboard({ navigation }) {
                           >
                             <ButtonText>{deletingRewardId === item._id ? 'Deleting...' : 'Delete'}</ButtonText>
                           </Button>
-                        </Animated.View>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -984,13 +949,13 @@ export default function AdminDashboard({ navigation }) {
                   removeClippedSubviews={true}
                 />
               </Card.Content>
-            </Animated.View>
+            </View>
           </View>
         )}
         {currentTab === 'notification' && (
           <>
             <Text style={[styles.title, { color: colors.text }]}>Notifications</Text>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="Redemption Requests"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
@@ -1016,7 +981,7 @@ export default function AdminDashboard({ navigation }) {
                         </Text>
                       </View>
                       <View style={styles.buttonRow}>
-                        <Animated.View style={animatedButtonStyle}>
+                        <View style={styles.buttonContainer}>
                           <Button
                             mode="contained"
                             style={styles.actionButton}
@@ -1026,8 +991,8 @@ export default function AdminDashboard({ navigation }) {
                           >
                             <ButtonText>Approve</ButtonText>
                           </Button>
-                        </Animated.View>
-                        <Animated.View style={animatedButtonStyle}>
+                        </View>
+                        <View style={styles.buttonContainer}>
                           <Button
                             mode="contained"
                             style={styles.actionButton}
@@ -1037,7 +1002,7 @@ export default function AdminDashboard({ navigation }) {
                           >
                             <ButtonText>Reject</ButtonText>
                           </Button>
-                        </Animated.View>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -1050,14 +1015,14 @@ export default function AdminDashboard({ navigation }) {
                   removeClippedSubviews={true}
                 />
               </Card.Content>
-            </Animated.View>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            </View>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="System Notifications"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
                 left={() => <Avatar.Icon size={40} icon="bell" style={{ backgroundColor: colors.primary }} />}
                 right={() => (
-                  <Animated.View style={animatedButtonStyle}>
+                  <View style={styles.buttonContainer}>
                     <Button
                       mode="text"
                       textColor={colors.error}
@@ -1065,7 +1030,7 @@ export default function AdminDashboard({ navigation }) {
                     >
                       <ButtonText>Dismiss All</ButtonText>
                     </Button>
-                  </Animated.View>
+                  </View>
                 )}
               />
               <Card.Content>
@@ -1092,7 +1057,7 @@ export default function AdminDashboard({ navigation }) {
                           {new Date(item.createdAt).toLocaleString()}
                         </Text>
                       </View>
-                      <Animated.View style={animatedButtonStyle}>
+                      <View style={styles.buttonContainer}>
                         <Button
                           mode="text"
                           textColor={colors.error}
@@ -1100,7 +1065,7 @@ export default function AdminDashboard({ navigation }) {
                         >
                           <ButtonText>Dismiss</ButtonText>
                         </Button>
-                      </Animated.View>
+                      </View>
                     </View>
                   )}
                   ListEmptyComponent={() => (
@@ -1112,13 +1077,13 @@ export default function AdminDashboard({ navigation }) {
                   removeClippedSubviews={true}
                 />
               </Card.Content>
-            </Animated.View>
+            </View>
           </>
         )}
         {currentTab === 'analytics' && (
           <>
             <Text style={[styles.title, { color: colors.text }]}>Analytics</Text>
-            <Animated.View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }, animatedCardStyle]}>
+            <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e1e1e' : '#fff' }]}>
               <Card.Title
                 title="System Statistics"
                 titleStyle={[styles.cardTitle, { color: colors.text }]}
@@ -1164,7 +1129,7 @@ export default function AdminDashboard({ navigation }) {
                           {user.name}
                         </Text>
                         <View style={styles.progressBar}>
-                          <Animated.View
+                          <View
                             style={[
                               styles.progressFill,
                               { width: `${progress}%`, backgroundColor: colors.primary },
@@ -1186,18 +1151,17 @@ export default function AdminDashboard({ navigation }) {
                   removeClippedSubviews={true}
                 />
               </Card.Content>
-            </Animated.View>
+            </View>
           </>
         )}
       </ScrollView>
-      <Animated.View
+      <View
         style={[
           styles.tabBar,
           {
             backgroundColor: isDarkMode ? '#1e1e1e' : '#fff',
             borderTopColor: isDarkMode ? '#333' : '#e0e0e0',
           },
-          animatedTabStyle,
         ]}
       >
         {['home', 'users', 'rewards', 'notification', 'analytics'].map((tab) => (
@@ -1234,7 +1198,7 @@ export default function AdminDashboard({ navigation }) {
             </Text>
           </TouchableOpacity>
         ))}
-      </Animated.View>
+      </View>
     </View>
   );
 }
@@ -1294,10 +1258,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 15,
+    ...(isWeb ? { transition: 'transform 0.2s ease' } : {}),
   },
   activeTab: {
     borderBottomWidth: 4,
     borderBottomColor: '#FFD700',
+    ...(isWeb ? { transform: [{ scale: 1.05 }] } : {}),
   },
   card: {
     marginVertical: 10,
@@ -1355,8 +1321,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     gap: 10,
   },
+  buttonContainer: {
+    ...(isWeb ? { transition: 'transform 0.2s ease' } : {}),
+  },
   title: {
-    fontSize: 32,
+    fontSize: 22,
     fontWeight: '700',
     marginVertical: 20,
     textAlign: 'center',
